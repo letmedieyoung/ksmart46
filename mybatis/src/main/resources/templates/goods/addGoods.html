@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	  xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	  layout:decorate="~{layout/default}">
+<head>
+	<link rel="stylesheet" type="text/css" th:href="@{/css/form.css}" />
+</head>
+<th:block layout:fragment="customJs">
+	<script th:src="@{/js/jquery-3.6.4.js}"></script>
+	<script th:inline="javascript">
+		$(function(){
+			//alert('제이쿼리')
+			function validationCheck(ele){ //요소를 파라미터로 받는 함수 실행
+				let data = $(ele).val(); //data 변수에 요소의 value값을 담는다
+				let isValid = true; //value 존재 여부 확인
+				if(typeof data == 'undefined' || data == null || data == ''){ //요소의 value값이 존재하지 않으면 조건문 실행
+					let msg = $(ele).parents('tr').find('label').text(); //요소(#sellerInfo)의 부모요소 tr > label > text 노드 값을 msg에 담는다.
+					alert(`${msg} 필수 항목입니다.`); //alert 실행
+					$(ele).focus(); //요소의 value값이 존재하지 않는 경우 해당 요소를 찾아 알려준다.
+					isValid = false;	
+				}
+				return isValid;
+			}
+			
+			
+			const memberLevel = [[${session.SLEVEL}]]; /* 변수 memberLevel에 현재 로그인 중인 session.SLEVEL을 담는다 */
+			
+			if(memberLevel == '1'){ //memberLevel이 1일 때
+				let request = $.ajax({ //ajax로 판매자정보 요청
+					  url: '/goods/sellersInfo',
+					  method: 'POST',
+					  dataType: 'json'
+				});
+					 
+				request.done(function( data ) { //요청이 완료되었을 때 받아온 데이터를 data라고 한다
+					const sellerList = data; //받은 정보를 변수 sellerList에 담는다
+					if(sellerList != null){ //sellerList가 null이 아닐 때
+						$(sellerList).each(function(idx, item){ //sellerList 한 행마다 each문을 통해 다음 스크립트문을 반복 수행
+							let memberId = item.memberId; 
+							let memberName = item.memberName;
+							const newEle = $(`<option value="${memberId}"> ${memberId} &emsp; :::: &emsp; ${memberName}</option>`); //option태그를 newEle로 선언
+							$('#sellerInfo').append(newEle); //#sellerInfo의 하위에 추가
+						})
+					}
+				});
+					 
+				request.fail(function( jqXHR, textStatus ) { //ajax 정보 요청 실패 시 에러처리
+					alert(`Request failed: ${textStatus}`);
+				});
+			}
+			
+			$('#submitBtn').click(function(){ //#submitBtn 클릭 시 함수 실행
+				let isSubmit = true; 
+				
+				if(memberLevel == '1'){
+					const $selectEle = $('#sellerInfo'); //#sellerInfo 요소를 selectEle에 담는다 
+					isSubmit = validationCheck($selectEle); //validationCheck 함수 실행 후 반환된 true or false 값을 isSubmit에 담는다					
+					if(!isSubmit) return; //!isSubmit이 true이면(isSubmit=false) 함수 종료.
+				}
+				
+				//memberLevel이 1이 아닌 경우, 아래 스크립트 실행
+				let $inputEles = $('#addGoodsForm input'); //#addGoodsForm의 input태그 요소를 inputEles에 담는다
+				$inputEles.each(function(idx, item){ //배열 타입 inputEles 요소의 길이 만큼 each문으로 반복수행
+					isSubmit = validationCheck(item); //validationCheck 반환값을 isSubmit에 담는다
+					return isSubmit; 
+				});
+				
+				if(isSubmit) $('#addGoodsForm').submit(); //isSubmit이 true라면 #addGoodsForm의 정보를 /goods/addGoods에 post 방식으로 전송한다. 
+				
+			});
+		});
+	
+	</script>
+</th:block>
+
+<th:block layout:fragment="customContents">
+	<form id="addGoodsForm" th:action="@{/goods/addGoods}" method="post">
+		<table>
+			<tbody>
+				<tr th:if="${session.SLEVEL == '2'}">
+					<td class="labeltd">
+						<label for="sellerId">판매자아이디</label>
+					</td>
+					<td>
+						<input type="text" id="goodsSellerId" name="goodsSellerId" th:value="${session.SID}" readonly="readonly"/>
+					</td>
+				</tr>
+				<tr th:if="${session.SLEVEL == '1'}">
+					<td class="labeltd">
+						<label for="memberLevel">판매자목록</label>
+					</td>
+					<td>
+						<select id="sellerInfo" name="goodsSellerId">
+							<option value="">판매자아이디를 선택해주세요</option>
+						</select>
+					</td>
+				</tr>								
+				<tr>
+					<td class="labeltd">
+						<label for="goodsName">상품명</label>
+					</td>
+					<td>
+						<input type="text" id="goodsName" 
+							   name="goodsName" placeholder="상품명을 입력해주세요."/>
+					</td>
+				</tr>								
+				<tr>
+					<td class="labeltd">
+						<label for="goodsPrice">상품가격</label>
+					</td>
+					<td>
+						<input type="number" id="goodsPrice" min="0"
+							   name="goodsPrice" placeholder="숫자로 입력해주세요."/>
+					</td>
+				</tr>								
+				<tr>
+					<td colspan="2">
+						<button type="button" id="submitBtn">상품등록</button>
+						<button type="reset" id="resetBtn">입력취소</button>
+					</td>
+				</tr>								
+			</tbody>
+		</table>
+	</form>
+			
+</th:block>
+
+</html>
